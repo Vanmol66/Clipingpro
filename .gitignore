@@ -1,0 +1,15 @@
+# Git ignore for AI Video Clipper
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+downloads/
+clips/
+*.mp4
+*.webm
+*.mkv
+*.srt
+*.vtt
+.DS_Store
+Thumbs.db

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Clipper - Fast 9:16 Viral Shorts & ZIP Export</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <div class="app-container">
+
+        <!-- Top Bar / Nav -->
+        <div class="top-nav">
+            <div class="badge-ratio-highlight">
+                <span class="ratio-dot"></span> 📱 9:16 Vertical Video • ⚡ Fast Download • 📦 ZIP Export
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-sm btn-outline" id="settings-btn" onclick="toggleSettingsModal()">
+                    ⚙️ <span id="api-status-text">Gemini Settings</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🎬</div>
+                <h1>AI Video Clipper</h1>
+            </div>
+            <p class="tagline">Turn long & multi-hour videos into high-quality <strong>9:16 vertical clips</strong>. Fast download, custom clip counts, and one-click ZIP export.</p>
+        </header>
+
+        <!-- Input Section with Tabs -->
+        <section class="input-section">
+            <div class="tabs-header">
+                <button class="tab-btn active" id="tab-url-btn" onclick="switchInputTab('url')">
+                    🔗 Paste Video URL
+                </button>
+                <button class="tab-btn" id="tab-upload-btn" onclick="switchInputTab('upload')">
+                    📁 Upload Local Video
+                </button>
+            </div>
+
+            <!-- Tab 1: URL Input -->
+            <div class="tab-content" id="tab-url">
+                <div class="url-input-group">
+                    <input type="text" id="url-input" 
+                           placeholder="Paste a YouTube, Twitter/X, Instagram, TikTok, Reddit, or any video URL (Hours supported)..."
+                           autocomplete="off" spellcheck="false">
+                    <button class="btn btn-secondary" id="preview-btn" onclick="fetchVideoInfo()">
+                        🔍 Preview
+                    </button>
+                    <button class="btn btn-primary" id="process-btn" onclick="processVideo()" disabled>
+                        🚀 Process & Clip (9:16)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 2: Upload Video File -->
+            <div class="tab-content" id="tab-upload" style="display: none;">
+                <div class="upload-dropzone" id="dropzone" onclick="document.getElementById('video-file-input').click()">
+                    <input type="file" id="video-file-input" accept="video/mp4,video/quicktime,video/x-matroska,video/webm" style="display: none;" onchange="handleFileSelect(event)">
+                    <div class="upload-icon">📤</div>
+                    <h3 id="upload-label">Click or Drag & Drop Video File Here</h3>
+                    <p>Supports MP4, MOV, MKV, WebM up to 16GB (Multi-hour videos supported)</p>
+                    <button class="btn btn-primary btn-sm" id="start-upload-btn" style="display: none; margin-top: 12px;" onclick="event.stopPropagation(); uploadVideoFile()">
+                        🚀 Upload & Process
+                    </button>
+                </div>
+            </div>
+
+            <!-- Video Preview -->
+            <div class="video-preview" id="video-preview"></div>
+
+            <!-- Number of Clips & Speed Options Row -->
+            <div class="options-grid">
+                <!-- Clips Count Selector -->
+                <div class="options-col">
+                    <span class="toolbar-label">🎯 Number of Clips to Generate:</span>
+                    <div class="count-options">
+                        <button type="button" class="count-pill" onclick="setClipCount(3)">3</button>
+                        <button type="button" class="count-pill" onclick="setClipCount(5)">5</button>
+                        <button type="button" class="count-pill active" id="count-pill-8" onclick="setClipCount(8)">8 (Recommended)</button>
+                        <button type="button" class="count-pill" onclick="setClipCount(10)">10</button>
+                        <button type="button" class="count-pill" onclick="setClipCount(15)">15</button>
+                        <div class="custom-count-wrapper">
+                            <span>Custom:</span>
+                            <input type="number" id="custom-clip-count" min="1" max="25" value="8" onchange="setClipCount(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Speed / Quality Mode -->
+                <div class="options-col">
+                    <span class="toolbar-label">⚡ Render Speed & Quality:</span>
+                    <div class="ratio-options">
+                        <label class="speed-pill active" id="speed-pill-fast">
+                            <input type="radio" name="download-speed" value="fast" checked onchange="updateSpeedSelection(this)">
+                            <span>⚡ Fast Download Mode <small>(~1s render, 720p 9:16)</small></span>
+                        </label>
+                        <label class="speed-pill" id="speed-pill-high">
+                            <input type="radio" name="download-speed" value="high" onchange="updateSpeedSelection(this)">
+                            <span>✨ Ultra HD 1080p <small>(CRF 18, 1080x1920)</small></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Subtitles / Captions Toggle -->
+                <div class="options-col">
+                    <span class="toolbar-label">💬 Subtitles / Captions Overlay:</span>
+                    <div class="ratio-options">
+                        <label class="speed-pill active" id="sub-pill-on">
+                            <input type="radio" name="clip-subtitles" value="on" checked onchange="updateSubtitlesSelection(this)">
+                            <span>💬 Burn-in Subtitles <small>(Default • TikTok/Reels Style)</small></span>
+                        </label>
+                        <label class="speed-pill" id="sub-pill-off">
+                            <input type="radio" name="clip-subtitles" value="off" onchange="updateSubtitlesSelection(this)">
+                            <span>🚫 No Subtitles</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Aspect Ratio Selector -->
+            <div class="ratio-toolbar">
+                <span class="toolbar-label">📱 Aspect Ratio:</span>
+                <div class="ratio-options">
+                    <label class="ratio-pill active">
+                        <input type="radio" name="global-ratio" value="9:16_blur" checked onchange="updateAspectSelection(this)">
+                        <span>📱 9:16 Blur Background <small>(Recommended for Shorts/Reels)</small></span>
+                    </label>
+                    <label class="ratio-pill">
+                        <input type="radio" name="global-ratio" value="9:16_crop" onchange="updateAspectSelection(this)">
+                        <span>📱 9:16 Center Crop <small>(Full Screen)</small></span>
+                    </label>
+                    <label class="ratio-pill">
+                        <input type="radio" name="global-ratio" value="9:16_fit" onchange="updateAspectSelection(this)">
+                        <span>📱 9:16 Fit <small>(Black Bars)</small></span>
+                    </label>
+                    <label class="ratio-pill">
+                        <input type="radio" name="global-ratio" value="original" onchange="updateAspectSelection(this)">
+                        <span>🖥️ Original Ratio</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Supported Sites Note -->
+            <div class="supported-tags">
+                <span class="sup-label">Supported sources:</span>
+                <span class="tag">YouTube (Any duration / Hours)</span>
+                <span class="tag">Twitter/X</span>
+                <span class="tag">Instagram</span>
+                <span class="tag">TikTok</span>
+                <span class="tag">Reddit</span>
+                <span class="tag">Direct Video Links</span>
+                <span class="tag">Local Files (up to 16GB)</span>
+            </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section class="progress-section" id="progress-section">
+            <div class="progress-steps">
+                <div class="progress-step" id="step-download">
+                    <span class="step-icon">⬇️</span>
+                    Fetch Video
+                </div>
+                <div class="progress-step" id="step-transcribe">
+                    <span class="step-icon">🎙️</span>
+                    Analyze Timeline
+                </div>
+                <div class="progress-step" id="step-analyze">
+                    <span class="step-icon">🤖</span>
+                    AI Clips
+                </div>
+                <div class="progress-step" id="step-ready">
+                    <span class="step-icon">✅</span>
+                    Ready
+                </div>
+            </div>
+
+            <!-- Animated Hamster Loader -->
+            <div class="hamster-loader-wrapper">
+                <div aria-label="Orange and tan hamster running in a metal wheel" role="img" class="wheel-and-hamster">
+                    <div class="wheel"></div>
+                    <div class="hamster">
+                        <div class="hamster__body">
+                            <div class="hamster__head">
+                                <div class="hamster__ear"></div>
+                                <div class="hamster__eye"></div>
+                                <div class="hamster__nose"></div>
+                            </div>
+                            <div class="hamster__limb hamster__limb--fr"></div>
+                            <div class="hamster__limb hamster__limb--fl"></div>
+                            <div class="hamster__limb hamster__limb--br"></div>
+                            <div class="hamster__limb hamster__limb--bl"></div>
+                            <div class="hamster__tail"></div>
+                        </div>
+                    </div>
+                    <div class="spoke"></div>
+                </div>
+                <div class="hamster-punchline" id="hamster-punchline">
+                    🐹 Our AI hamster is sprinting on the wheel to find viral gold...
+                </div>
+            </div>
+
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-message">
+                <span class="spinner"></span> Preparing...
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section" id="results-section">
+
+            <!-- AI Suggestions -->
+            <div class="section-header-row">
+                <div>
+                    <h2 class="section-title">
+                        <span class="icon">🤖</span>
+                        Suggested 9:16 Viral Moments (<span id="suggestions-count">0</span> clips)
+                    </h2>
+                    <span class="section-subtitle">Click "⚡ Fast Download" to render & download in one click, or preview below.</span>
+                </div>
+                <div class="section-actions">
+                    <button class="btn btn-primary" id="batch-render-btn" onclick="batchRenderAllAndZip()">
+                        🚀 Generate All Clips & Download ZIP
+                    </button>
+                </div>
+            </div>
+            <div class="suggestions-grid" id="suggestions-grid"></div>
+
+            <!-- Transcript -->
+            <div class="transcript-section">
+                <div class="transcript-header" onclick="toggleTranscript()">
+                    <h2 class="section-title" style="margin: 0;">
+                        <span class="icon">📝</span>
+                        Full Transcript & Timestamp Markers
+                    </h2>
+                    <span id="transcript-arrow" style="font-size: 1.2rem; color: var(--text-secondary);">▼</span>
+                </div>
+                <div class="transcript-body" id="transcript-body"></div>
+            </div>
+
+            <!-- Created Clips -->
+            <div class="section-header-row">
+                <div>
+                    <h2 class="section-title">
+                        <span class="icon">🎞️</span>
+                        Your Rendered Clips (<span id="rendered-count">0</span> ready)
+                    </h2>
+                    <span class="section-subtitle">Preview vertical video, download individually, or download all in a single ZIP.</span>
+                </div>
+                <div id="batch-actions" style="display: none;">
+                    <a id="download-all-btn" href="#" class="btn btn-success" download>
+                        📦 Download All as ZIP (.zip)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Delivery Truck Rendering Animation Overlay -->
+            <div id="truck-delivery-loader" class="truck-delivery-container" style="display: none;">
+                <div class="loader">
+                    <div class="truckWrapper">
+                        <div class="truckBody">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 198 93" class="trucksvg">
+                                <path stroke-width="3" stroke="#282828" fill="#F83D3D" d="M135 22.5H177.264C178.295 22.5 179.22 23.133 179.594 24.0939L192.33 56.8443C192.442 57.1332 192.5 57.4404 192.5 57.7504V89C192.5 90.3807 191.381 91.5 190 91.5H135C133.619 91.5 132.5 90.3807 132.5 89V25C132.5 23.6193 133.619 22.5 135 22.5Z"></path>
+                                <path stroke-width="3" stroke="#282828" fill="#7D7C7C" d="M146 33.5H181.741C182.779 33.5 183.709 34.1415 184.078 35.112L190.538 52.112C191.16 53.748 189.951 55.5 188.201 55.5H146C144.619 55.5 143.5 54.3807 143.5 53V36C143.5 34.6193 144.619 33.5 146 33.5Z"></path>
+                                <path stroke-width="2" stroke="#282828" fill="#282828" d="M150 65C150 65.39 149.763 65.8656 149.127 66.2893C148.499 66.7083 147.573 67 146.5 67C145.427 67 144.501 66.7083 143.873 66.2893C143.237 65.8656 143 65.39 143 65C143 64.61 143.237 64.1344 143.873 63.7107C144.501 63.2917 145.427 63 146.5 63C147.573 63 148.499 63.2917 149.127 63.7107C149.763 64.1344 150 64.61 150 65Z"></path>
+                                <rect stroke-width="2" stroke="#282828" fill="#FFFCAB" rx="1" height="7" width="5" y="63" x="187"></rect>
+                                <rect stroke-width="2" stroke="#282828" fill="#282828" rx="1" height="11" width="4" y="81" x="193"></rect>
+                                <rect stroke-width="3" stroke="#282828" fill="#DFDFDF" rx="2.5" height="90" width="121" y="1.5" x="6.5"></rect>
+                                <rect stroke-width="2" stroke="#282828" fill="#DFDFDF" rx="2" height="4" width="6" y="84" x="1"></rect>
+                            </svg>
+                        </div>
+                        <div class="truckTires">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 30 30" class="tiresvg">
+                                <circle stroke-width="3" stroke="#282828" fill="#282828" r="13.5" cy="15" cx="15"></circle>
+                                <circle fill="#DFDFDF" r="7" cy="15" cx="15"></circle>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 30 30" class="tiresvg">
+                                <circle stroke-width="3" stroke="#282828" fill="#282828" r="13.5" cy="15" cx="15"></circle>
+                                <circle fill="#DFDFDF" r="7" cy="15" cx="15"></circle>
+                            </svg>
+                        </div>
+                        <div class="road"></div>
+                        <svg xml:space="preserve" viewBox="0 0 453.459 453.459" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" id="Capa_1" version="1.1" fill="#000000" class="lampPost">
+                            <path d="M252.882,0c-37.781,0-68.686,29.953-70.245,67.358h-6.917v8.954c-26.109,2.163-45.463,10.011-45.463,19.366h9.993 c-1.65,5.146-2.507,10.54-2.507,16.017c0,28.956,23.558,52.514,52.514,52.514c28.956,0,52.514-23.558,52.514-52.514 c0-5.478-0.856-10.872-2.506-16.017h9.992c0-9.354-19.352-17.204-45.463-19.366v-8.954h-6.149C200.189,38.779,223.924,16,252.882,16 c29.952,0,54.32,24.368,54.32,54.32c0,28.774-11.078,37.009-25.105,47.437c-17.444,12.968-37.216,27.667-37.216,78.884v113.914 h-0.797c-5.068,0-9.174,4.108-9.174,9.177c0,2.844,1.293,5.383,3.321,7.066c-3.432,27.933-26.851,95.744-8.226,115.459v11.202h45.75 v-11.202c18.625-19.715-4.794-87.527-8.227-115.459c2.029-1.683,3.322-4.223,3.322-7.066c0-5.068-4.107-9.177-9.176-9.177h-0.795 V196.641c0-43.174,14.942-54.283,30.762-66.043c14.793-10.997,31.559-23.461,31.559-60.277C323.202,31.545,291.656,0,252.882,0z M232.77,111.694c0,23.442-19.071,42.514-42.514,42.514c-23.442,0-42.514-19.072-42.514-42.514c0-5.531,1.078-10.957,3.141-16.017 h78.747C231.693,100.736,232.77,106.162,232.77,111.694z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="truck-punchline" id="truck-punchline">
+                    🚚 Beep beep! Your high-octane 9:16 viral clips are on the highway...
+                </div>
+            </div>
+            <div class="clips-list" id="clips-list">
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="icon">🎞️</div>
+                    <h3>No clips rendered yet</h3>
+                    <p>Click "⚡ Fast Download" on any suggestion above or click "🚀 Generate All Clips & Download ZIP" to export all clips at once.</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Features (shown on initial state) -->
+        <section class="features-section" id="features-section">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="f-icon">⚡</div>
+                    <h4>Fast & Instant Download</h4>
+                    <p>Ultra-fast GPU/CPU rendering allows instant 9:16 clip export in 1-2 seconds with one-click direct MP4 downloads.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="f-icon">📦</div>
+                    <h4>Batch ZIP Export</h4>
+                    <p>Export all generated clips together into a neatly structured ZIP file with clean filenames and titles.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="f-icon">🎯</div>
+                    <h4>Custom Clip Quantities</h4>
+                    <p>Generate 3, 5, 8, 10, or 15+ clips across multi-hour videos or let AI automatically extract the best moments.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- AI Engine Settings Modal -->
+    <div class="modal-backdrop" id="settings-modal" style="display: none;" onclick="if(event.target === this) toggleSettingsModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⚙️ AI Models & Free API Keys</h3>
+                <button class="modal-close-btn" onclick="toggleSettingsModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    Configure free AI keys to enable automatic virality scoring, AI hook detection, and rapid transcript analysis.
+                </p>
+
+                <!-- Groq API Key -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-weight: 600;">⚡ Groq API Key (Whisper Large v3 + Llama 3.3 70B)</label>
+                        <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="font-size: 0.8rem; color: var(--accent-light); text-decoration: none;">
+                            Get free Groq key ↗
+                        </a>
+                    </div>
+                    <input type="password" id="settings-groq-key" placeholder="gsk_..." autocomplete="off">
+                    <div id="groq-status-indicator" style="font-size: 0.8rem; margin-top: 4px;"></div>
+                </div>
+
+                <!-- Gemini API Key -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-weight: 600;">🤖 Google Gemini API Key (Gemini 2.0 / 1.5 Flash)</label>
+                        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="font-size: 0.8rem; color: var(--accent-light); text-decoration: none;">
+                            Get free Gemini key ↗
+                        </a>
+                    </div>
+                    <input type="password" id="settings-api-key" placeholder="AIzaSy..." autocomplete="off">
+                    <div id="settings-status-indicator" style="font-size: 0.8rem; margin-top: 4px;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleSettingsModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="saveApiKeys()">
+                        💾 Save & Activate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
